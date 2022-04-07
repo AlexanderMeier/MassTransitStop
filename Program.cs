@@ -6,7 +6,7 @@ using System.Diagnostics;
 class Program
 {
     public static bool IsServer;
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         IsServer = args.Length == 0;
         var services = new ServiceCollection();
@@ -18,18 +18,19 @@ class Program
 
         var sp = services.BuildServiceProvider();
         var busControl = sp.GetRequiredService<IBusControl>();
-        busControl.Start();
+        await busControl.StartAsync();
         Console.WriteLine(IsServer ? "Server started" : "Client started");
         if (IsServer)
         {
             Process.Start("MassTransitStop.exe", "client");
-            Thread.Sleep(2000); // Wait for client to stop
-            busControl.Publish(new TestMessage() { Key = 1 });
-            Thread.Sleep(1000); // Allow Server to consume
+            await Task.Delay(2000); // Wait for client to stop
+            await busControl.Publish(new TestMessage() { Key = 1 });
+            await Task.Delay(1000);
         }
 
         Console.WriteLine(IsServer ? "Server stopping ..." : "Client stopping ...");
-        busControl.Stop(); // This call takes forever when a message is published, after the Client has stopped
+        await busControl.StopAsync(); // This call takes forever when a message is published, after the Client has stopped
+        //await busControl.StopAsync(TimeSpan.FromSeconds(5)); // This call would end after 5 seconds
         Console.WriteLine(IsServer ? "Server stopped" : "Client stopped");
     }
 
